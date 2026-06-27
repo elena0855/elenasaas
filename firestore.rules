@@ -1,0 +1,58 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isCompanyOwner(companyId) {
+      return isAuthenticated() && request.auth.uid == companyId;
+    }
+
+    function ownsDocument(companyIdField) {
+      return isAuthenticated() && (
+        (resource == null && request.resource.data[companyIdField] == request.auth.uid) ||
+        (resource != null && resource.data[companyIdField] == request.auth.uid)
+      );
+    }
+
+    // Companies
+    match /companies/{companyId} {
+      allow read: if isCompanyOwner(companyId);
+      allow write: if false;
+    }
+
+    // Products
+    match /products/{productId} {
+      allow read, create, update, delete: if ownsDocument("companyId");
+    }
+
+    // Sales (immutable logs)
+    match /sales/{saleId} {
+      allow read, create: if ownsDocument("companyId");
+      allow update, delete: if false;
+    }
+
+    // Invoices
+    match /invoices/{invoiceId} {
+      allow read, create, update, delete: if ownsDocument("companyId");
+    }
+
+    // Clients
+    match /clients/{clientId} {
+      allow read, create, update, delete: if ownsDocument("companyId");
+    }
+
+    // Suppliers
+    match /suppliers/{supplierId} {
+      allow read, create, update, delete: if ownsDocument("companyId");
+    }
+
+    // Activation Keys (server-side only)
+    match /activation_keys/{keyId} {
+      allow read, write: if false;
+    }
+  }
+}

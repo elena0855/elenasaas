@@ -16,17 +16,23 @@ services:
           name: elenadb
           property: connectionString
       - key: NEXT_PUBLIC_FIREBASE_API_KEY
-        sync: false
+        value: AIzaSyAcf4ftmkBZ2P-FaG1BRzNywrAHJpBEyug
       - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-        sync: false
+        value: elena-c2332.firebaseapp.com
       - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-        sync: false
+        value: elena-c2332
       - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-        sync: false
+        value: elena-c2332.firebasestorage.app
       - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-        sync: false
+        value: "797662008004"
       - key: NEXT_PUBLIC_FIREBASE_APP_ID
-        sync: false
+        value: "1:797662008004:web:4b66ce3b8fa2885fcdef91"
+      - key: FIREBASE_PROJECT_ID
+        value: elena-c2332
+      - key: FIREBASE_CLIENT_EMAIL
+        value: firebase-adminsdk-fbsvc@elena-c2332.iam.gserviceaccount.com
+      - key: FIREBASE_PRIVATE_KEY
+        value: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDOKc+wakyTggDC\nOhyZmfT9/ughjHNScRhWSvqMtK4+5e/+loYLHtuWqZvlrS78D7lhhhEd67vrNy71\noi+oWC1hYL42wTeDNz7NPcfP4SeZsZdu1h/TnTk0TpQCk5HcKi68jiuNCJp3WdO+\nLY0sF4hsD793gdPi25H9HDZCrZ4W4Tj1pBKNOpvSioq96siuIcaXMQT0EOwETd2e\nDqWTEKCbI1uTRTkfjnsmxU0ycgWgrsTPIIm0ZDPYITqT5TNtskq6NVf66Io3pEjO\ns66ctGou2t3F4hq4L2frWiARccWexu3+IJVYH4EO8U6g+gTb6y0nQuGG/f+HIo6z\nGUmeq3UFAgMBAAECggEAH8ZVnSjtBNPFySm1Yb6BrNS+XflXMYQpI5eqdnLx434u\nAfec0OxLHN/8R/xsCuu41JKaDcSuRxT6Fwq4Z1exJYUzG/OmBNfIGqWkfQzZ5811\ne7Q4iIrUF78//wZT4J0xwdxJqGgvN9OaQoFOdQFq2c4y4jjveX4CSgKwoZCVFo0N\nz7ea7IAjGT5QXdp9jhAG3PcKJSDqf5dIyyFTSu7vEVpKgmKqfmyjdGQ8bodvbKZy\n/IaEWdDAwjPXW34hyJREKvNIVtc3sjn+/d6G2v/FETQhmpYwLX3fRGz0N2cfiidQ\n62FzS+9ik67qbnE6QPt1DSLTOgBZS+uI2lurRQwUGwKBgQD7UzUBMHPzOrglR0sK\nta8HuPIb3JkCJDGerQ/feYvirhcU2zme0gd0iEANat9G4anTASDfJ5yZdWopwSDu\nBgC3Pk4x/tQFYO5/5UNjiImrp1ojclocsTVJXxN8us+K73mUEFRgwQnmhNpeFAnl\n7GZaTp2MQ8uWtV0QVJUSsjsHSwKBgQDR/4wXksZoJj4yNnFcHlT1lByKaLVe4dFx\n1c9urzJyzmSo+Hu88kelja/cokPt5bghajRx5qCZrmqarzRYfypjBi73mepbhBln\ncMgfe0CX/VHlbFgvm+3lkOvIdpSJR4H0v7dhZuzjNFUoSEeypFZwLqWaR6FZ9wlK\noq4GgYky7wKBgDjAhlSZa2V+WfzZB4IImtikk89k1gxcvfO14sK1ALiUVVP5WR6b\nEOHoroYZHwgzhxTFyXV6zWr9z5ZULSpyopC+egviHmCEjfbFf50nROdFKB6fAOg/\nv+esl4rv6FPYVdzwfw1GKgUq9OCPp9iKtGYqIHt/B6cllzlL0Enjg17XAoGAXCoW\n9wWg9HbMV0dTq0VYrktp10krSNA9FwPqvT5BGugAf7RGwl9nGH69z0ycGZ33mRq+\nl7rLg4dsHCWHCMwO81T0ahDwLWglqiNygXabm9k/Bzzs20BJQba/9MQuXq22mI9H\n0YTVtMX0FfDbHslHcobWgYashwqH1mzdiddyOpsCgYEA1XRKqTXSnj7bItZFNtTg\nj2a9dpfJgr30ysnZp+EMtDELqJZKKfk9UhaLjZAm1NsIHVJekCy+UP69nr6GIJeH\n1k1o77EJqamlNgs/HsHz+aWnvO6cDqAxb8szsqXTVWgj7qGYMwaAw7Ow1FPciY4U\nfong2wZdH0qZBuaPLfyRntM=\n-----END PRIVATE KEY-----\n"
 
   - type: web
     name: elenaadmin
@@ -41,14 +47,20 @@ services:
           name: elenadb
           property: connectionString
       - key: NEXT_PUBLIC_FIREBASE_API_KEY
-        sync: false
+        value: AIzaSyAcf4ftmkBZ2P-FaG1BRzNywrAHJpBEyug
       - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-        sync: false
+        value: elena-c2332.firebaseapp.com
       - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-        sync: false
+        value: elena-c2332
       - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-        sync: false
+        value: elena-c2332.firebasestorage.app
       - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-        sync: false
+        value: "797662008004"
       - key: NEXT_PUBLIC_FIREBASE_APP_ID
-        sync: false
+        value: "1:797662008004:web:4b66ce3b8fa2885fcdef91"
+      - key: FIREBASE_PROJECT_ID
+        value: elena-c2332
+      - key: FIREBASE_CLIENT_EMAIL
+        value: firebase-adminsdk-fbsvc@elena-c2332.iam.gserviceaccount.com
+      - key: FIREBASE_PRIVATE_KEY
+        value: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDOKc+wakyTggDC\nOhyZmfT9/ughjHNScRhWSvqMtK4+5e/+loYLHtuWqZvlrS78D7lhhhEd67vrNy71\noi+oWC1hYL42wTeDNz7NPcfP4SeZsZdu1h/TnTk0TpQCk5HcKi68jiuNCJp3WdO+\nLY0sF4hsD793gdPi25H9HDZCrZ4W4Tj1pBKNOpvSioq96siuIcaXMQT0EOwETd2e\nDqWTEKCbI1uTRTkfjnsmxU0ycgWgrsTPIIm0ZDPYITqT5TNtskq6NVf66Io3pEjO\ns66ctGou2t3F4hq4L2frWiARccWexu3+IJVYH4EO8U6g+gTb6y0nQuGG/f+HIo6z\nGUmeq3UFAgMBAAECggEAH8ZVnSjtBNPFySm1Yb6BrNS+XflXMYQpI5eqdnLx434u\nAfec0OxLHN/8R/xsCuu41JKaDcSuRxT6Fwq4Z1exJYUzG/OmBNfIGqWkfQzZ5811\ne7Q4iIrUF78//wZT4J0xwdxJqGgvN9OaQoFOdQFq2c4y4jjveX4CSgKwoZCVFo0N\nz7ea7IAjGT5QXdp9jhAG3PcKJSDqf5dIyyFTSu7vEVpKgmKqfmyjdGQ8bodvbKZy\n/IaEWdDAwjPXW34hyJREKvNIVtc3sjn+/d6G2v/FETQhmpYwLX3fRGz0N2cfiidQ\n62FzS+9ik67qbnE6QPt1DSLTOgBZS+uI2lurRQwUGwKBgQD7UzUBMHPzOrglR0sK\nta8HuPIb3JkCJDGerQ/feYvirhcU2zme0gd0iEANat9G4anTASDfJ5yZdWopwSDu\nBgC3Pk4x/tQFYO5/5UNjiImrp1ojclocsTVJXxN8us+K73mUEFRgwQnmhNpeFAnl\n7GZaTp2MQ8uWtV0QVJUSsjsHSwKBgQDR/4wXksZoJj4yNnFcHlT1lByKaLVe4dFx\n1c9urzJyzmSo+Hu88kelja/cokPt5bghajRx5qCZrmqarzRYfypjBi73mepbhBln\ncMgfe0CX/VHlbFgvm+3lkOvIdpSJR4H0v7dhZuzjNFUoSEeypFZwLqWaR6FZ9wlK\noq4GgYky7wKBgDjAhlSZa2V+WfzZB4IImtikk89k1gxcvfO14sK1ALiUVVP5WR6b\nEOHoroYZHwgzhxTFyXV6zWr9z5ZULSpyopC+egviHmCEjfbFf50nROdFKB6fAOg/\nv+esl4rv6FPYVdzwfw1GKgUq9OCPp9iKtGYqIHt/B6cllzlL0Enjg17XAoGAXCoW\n9wWg9HbMV0dTq0VYrktp10krSNA9FwPqvT5BGugAf7RGwl9nGH69z0ycGZ33mRq+\nl7rLg4dsHCWHCMwO81T0ahDwLWglqiNygXabm9k/Bzzs20BJQba/9MQuXq22mI9H\n0YTVtMX0FfDbHslHcobWgYashwqH1mzdiddyOpsCgYEA1XRKqTXSnj7bItZFNtTg\nj2a9dpfJgr30ysnZp+EMtDELqJZKKfk9UhaLjZAm1NsIHVJekCy+UP69nr6GIJeH\n1k1o77EJqamlNgs/HsHz+aWnvO6cDqAxb8szsqXTVWgj7qGYMwaAw7Ow1FPciY4U\nfong2wZdH0qZBuaPLfyRntM=\n-----END PRIVATE KEY-----\n"

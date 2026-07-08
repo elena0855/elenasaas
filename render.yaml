@@ -1,12 +1,14 @@
 services:
   - type: web
-    name: infinity-app
+    name: elenasaas
     env: node
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
-        value: ~20.0.0
+        value: 20.x
+      - key: DATABASE_URL
+        sync: false
       - key: NEXT_PUBLIC_FIREBASE_API_KEY
         sync: false
       - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
@@ -19,9 +21,26 @@ services:
         sync: false
       - key: NEXT_PUBLIC_FIREBASE_APP_ID
         sync: false
-      - key: FIREBASE_PROJECT_ID
+
+  - type: web
+    name: elenaadmin
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.x
+      - key: DATABASE_URL
         sync: false
-      - key: FIREBASE_CLIENT_EMAIL
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
         sync: false
-      - key: FIREBASE_PRIVATE_KEY
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
         sync: false

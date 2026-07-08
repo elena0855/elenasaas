@@ -42,6 +42,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [lowStockCount, setLowStockCount] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+      setShowInstallBtn(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && !user) {
@@ -359,6 +381,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </motion.div>
 
           <div className="flex items-center gap-3">
+            {/* PWA Install Button with green glowing light animation */}
+            {showInstallBtn && (
+              <motion.button
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                onClick={handleInstallClick}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-95 text-slate-950 text-xs font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.7)] border border-emerald-400/50 animate-pulse mr-2"
+              >
+                Installer l'App
+              </motion.button>
+            )}
+
             {/* Notification bell */}
             {lowStockCount > 0 && (
               <motion.div

@@ -28,6 +28,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setDeferredPrompt(null);
+      setShowInstallBtn(false);
+    }
+  };
 
   // Entrance animation
   useEffect(() => {
@@ -67,43 +89,29 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const mockHeader = btoa(
-        JSON.stringify({ alg: "HS256", typ: "JWT" })
-      ).replace(/=/g, "");
-      const mockPayload = btoa(
-        JSON.stringify({
-          sub: "sandbox-user-123",
-          email: "demo@elena.saas",
-          role: "admin",
-        })
-      ).replace(/=/g, "");
-      const mockToken = `${mockHeader}.${mockPayload}.signature`;
-      await setSessionCookie(mockToken);
-      // Use window.location for a hard navigation after cookie is set
+      await new Promise((r) => setTimeout(r, 600));
+      // In demo mode we write a mock session cookie
+      await setSessionCookie("demo-mode-token");
       window.location.href = "/app/dashboard";
     } catch (err: any) {
-      setError("Erreur lors de la connexion démo.");
+      setError(err.message);
       setLoading(false);
     }
   };
 
   // Google Popup login (avoids redirect timing issues)
   const handleGoogleLogin = async () => {
-    setLoading(true);
+    if (!isClientConfigured()) {
+      return void setError("Firebase n'est pas configuré");
+    }
     setError(null);
+    setLoading(true);
     try {
       const result = await signInWithGoogle();
+      if (!result?.user) throw new Error("Aucun utilisateur renvoyé");
 
-      if (!result) {
-        // Popup was closed by user
-        setLoading(false);
-        return;
-      }
-
-      // Get the token from the signed-in user
+      // Retrieve Firebase ID token to exchange for server cookie
       const token = await result.user.getIdToken();
-
-      // Set the session cookie BEFORE navigating
       await setSessionCookie(token);
 
       // Now navigate — cookie is guaranteed to exist
@@ -115,18 +123,27 @@ export default function LoginPage() {
         window.location.href = "/app/dashboard";
       }
     } catch (err: any) {
-      console.error("Login failed:", err);
-      const msg =
-        err?.code === "auth/popup-blocked"
-          ? "Le popup de connexion a été bloqué. Autorisez les popups pour ce site et réessayez."
-          : err.message || "Une erreur est survenue lors de la connexion.";
-      setError(msg);
+      console.error(err);
+      setError(err?.message || "Erreur de connexion");
+    } finally {
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-slate-100 flex items-center justify-center p-6 relative overflow-hidden">
+      {/* PWA Install Button with green glowing light animation */}
+      {showInstallBtn && (
+        <div className="absolute top-4 right-4 z-50">
+          <button
+            onClick={handleInstallClick}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:opacity-95 text-slate-950 text-xs font-black transition-all shadow-[0_0_20px_rgba(16,185,129,0.7)] border border-emerald-400/50 animate-pulse"
+          >
+            Installer l'App Elena
+          </button>
+        </div>
+      )}
+
       {/* Background glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[20%] left-[20%] w-[60%] h-[60%] rounded-full bg-cyan-900/10 blur-[140px]" />

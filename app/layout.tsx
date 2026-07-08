@@ -20,7 +20,6 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "ELENA — SaaS B2B Point de Vente & Assistant Vocal",
   description: "Solution SaaS de point de vente, contrôle d'inventaire et comptabilité par assistant vocal intelligent.",
-  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

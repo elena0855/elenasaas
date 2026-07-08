@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Search, ShoppingCart, Trash2, Plus, Minus, Check, AlertCircle } from "lucide-react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { getProducts } from "@/app/actions/products";
 import { processSaleTransaction } from "@/app/actions/sales";
 import {
   Button,
@@ -42,48 +41,34 @@ export default function SalesPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
+  const fetchProducts = useCallback(async () => {
     if (!user) return;
-
-    if (!db) {
+    try {
+      setLoading(true);
+      const data = await getProducts(user.uid);
+      setProducts(data);
+    } catch (error) {
+      console.warn("Prisma fetch failed, using local storage fallback:", error);
       const stored = localStorage.getItem(`products_${user.uid}`);
       if (stored) {
         setProducts(JSON.parse(stored));
       } else {
         const defaultProducts = [
-          { id: "prod-1", name: "Riz Basmati", price: 3.50, quantity: 15, companyId: user.uid },
-          { id: "prod-2", name: "Huile d'olive", price: 8.90, quantity: 8, companyId: user.uid },
-          { id: "prod-3", name: "Café Arabica", price: 4.20, quantity: 3, companyId: user.uid }
+          { id: "prod-1", name: "Riz Basmati", price: 3.50, quantity: 15 },
+          { id: "prod-2", name: "Huile d'olive", price: 8.90, quantity: 8 },
+          { id: "prod-3", name: "Café Arabica", price: 4.20, quantity: 3 }
         ];
         localStorage.setItem(`products_${user.uid}`, JSON.stringify(defaultProducts));
         setProducts(defaultProducts);
       }
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const productsRef = collection(db, "products");
-    const q = query(productsRef, where("companyId", "==", user.uid));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Product[];
-        items.sort((a, b) => a.name.localeCompare(b.name));
-        setProducts(items);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Firestore loading error:", err);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Add item to cart
   const addToCart = (product: Product) => {
@@ -162,7 +147,22 @@ export default function SalesPage() {
     setError(null);
     setSuccess(false);
 
-    if (!db) {
+    try {
+      const res = (await processSaleTransaction(user.uid, cart, clientName)) as {
+        success: boolean;
+        error?: string;
+      };
+      if (res.success) {
+        setSuccess(true);
+        setCart([]);
+        setClientName("");
+        fetchProducts();
+        setTimeout(() => setSuccess(false), 3000);
+      } else {
+        throw new Error(res.error || "La vente a échoué.");
+      }
+    } catch (err: any) {
+      console.warn("Server sale failed, falling back to local storage validation:", err);
       try {
         const storedProducts = localStorage.getItem(`products_${user.uid}`);
         if (!storedProducts) {
@@ -198,29 +198,9 @@ export default function SalesPage() {
         setCart([]);
         setClientName("");
         setTimeout(() => setSuccess(false), 3000);
-      } catch (err: any) {
-        setError(err.message || "Erreur lors de la validation locale.");
-      } finally {
-        setSubmitting(false);
+      } catch (localErr: any) {
+        setError(localErr.message || "Erreur lors de la validation locale.");
       }
-      return;
-    }
-
-    try {
-      const res = (await processSaleTransaction(user.uid, cart, clientName)) as {
-        success: boolean;
-        error?: string;
-      };
-      if (res.success) {
-        setSuccess(true);
-        setCart([]);
-        setClientName("");
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        setError(res.error || "La vente a échoué.");
-      }
-    } catch (err: any) {
-      setError(err.message || "Erreur réseau.");
     } finally {
       setSubmitting(false);
     }
@@ -291,7 +271,7 @@ export default function SalesPage() {
 
                       <div className="w-full flex items-end justify-between mt-auto">
                         <span className="text-lg font-bold font-mono text-cyan-400">
-                          {p.price.toFixed(2)} €
+                          {p.price.toFixed(0)} FCFA
                         </span>
                         <span className="text-[10px] text-slate-400">
                           Stock: {p.quantity}
@@ -352,7 +332,7 @@ export default function SalesPage() {
                     <div className="flex flex-col min-w-0 pr-2">
                       <span className="font-semibold text-slate-200 truncate">{item.name}</span>
                       <span className="text-xs text-cyan-400/80 font-mono">
-                        {item.price.toFixed(2)}€ / unité
+                        {item.price.toFixed(0)} FCFA / unité
                       </span>
                     </div>
 
@@ -396,7 +376,7 @@ export default function SalesPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-400 font-medium">Montant Total</span>
                 <span className="text-xl font-bold font-mono text-emerald-400">
-                  {cartTotal.toFixed(2)} €
+                  {cartTotal.toFixed(0)} FCFA
                 </span>
               </div>
 

@@ -1,6 +1,6 @@
 "use server";
 
-import { adminDb, admin } from "@/lib/firebase-admin";
+import { query, getPool } from "@/lib/pg";
 
 interface VoiceResult {
   success: boolean;
@@ -15,42 +15,29 @@ export async function executeVoiceCommand(uid: string, commandText: string): Pro
 
   try {
     // 1. Command: "ajouter stock [produit] quantité [nombre]"
-    // Regex matches: "ajouter stock [riz] quantité [10]" or "ajouter stock de [riz] quantité [10]"
     const addRegex = /ajouter\s+(?:de\s+)?stock\s+(.+?)\s+quantit[eé]\s+(\d+)/i;
     const addMatch = text.match(addRegex);
     if (addMatch) {
       const productName = addMatch[1].trim();
       const quantity = parseInt(addMatch[2], 10);
 
-      const productsRef = adminDb.collection("products");
-      const query = await productsRef
-        .where("companyId", "==", uid)
-        .where("nameLower", "==", productName.toLowerCase())
-        .limit(1)
-        .get();
+      const prodRes = await query("SELECT id, quantity FROM products WHERE company_id = $1 AND name_lower = $2", [
+        uid,
+        productName.toLowerCase(),
+      ]);
 
       let newStock = quantity;
-      let isNew = true;
-
-      if (!query.empty) {
-        const productDoc = query.docs[0];
-        const currentData = productDoc.data();
-        newStock = (currentData.quantity || 0) + quantity;
-        await productDoc.ref.update({
-          quantity: newStock,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        isNew = false;
+      if (prodRes.rows.length > 0) {
+        const product = prodRes.rows[0];
+        newStock = (product.quantity || 0) + quantity;
+        await query("UPDATE products SET quantity = $1, updated_at = NOW() WHERE id = $2", [newStock, product.id]);
       } else {
-        await productsRef.add({
-          name: productName,
-          nameLower: productName.toLowerCase(),
-          quantity: quantity,
-          price: 5.0, // Default price
-          companyId: uid,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        const uuid = "prod-" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+        await query(
+          `INSERT INTO products (id, name, name_lower, price, quantity, company_id)
+           VALUES ($1, $2, $3, 5.0, $4, $5)`,
+          [uuid, productName, productName.toLowerCase(), quantity, uid]
+        );
       }
 
       return {
@@ -62,7 +49,6 @@ export async function executeVoiceCommand(uid: string, commandText: string): Pro
     }
 
     // 2. Command: "vendre [nombre] [produit] client [nom]"
-    // Regex matches: "vendre [5] [riz] client [jean dupont]"
     const sellRegex = /vendre\s+(\d+)\s+(.+?)\s+client\s+(.+)/i;
     const sellMatch = text.match(sellRegex);
     if (sellMatch) {
@@ -70,14 +56,12 @@ export async function executeVoiceCommand(uid: string, commandText: string): Pro
       const productName = sellMatch[2].trim();
       const clientName = sellMatch[3].trim();
 
-      const productsRef = adminDb.collection("products");
-      const query = await productsRef
-        .where("companyId", "==", uid)
-        .where("nameLower", "==", productName.toLowerCase())
-        .limit(1)
-        .get();
+      const prodRes = await query("SELECT id, name, price, quantity FROM products WHERE company_id = $1 AND name_lower = $2", [
+        uid,
+        productName.toLowerCase(),
+      ]);
 
-      if (query.empty) {
+      if (prodRes.rows.length === 0) {
         return {
           success: false,
           action: "Vente échouée",
@@ -86,9 +70,8 @@ export async function executeVoiceCommand(uid: string, commandText: string): Pro
         };
       }
 
-      const productDoc = query.docs[0];
-      const productData = productDoc.data();
-      const currentStock = productData.quantity || 0;
+      const product = prodRes.rows[0];
+      const currentStock = product.quantity || 0;
 
       if (currentStock < quantity) {
         return {
@@ -99,54 +82,65 @@ export async function executeVoiceCommand(uid: string, commandText: string): Pro
         };
       }
 
-      const price = productData.price || 0;
+      const price = product.price || 0;
       const totalAmount = price * quantity;
       const newStock = currentStock - quantity;
 
-      // Execute as batch transaction
-      const batch = adminDb.batch();
-      batch.update(productDoc.ref, {
-        quantity: newStock,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      const pool = getPool();
+      if (!pool) return { success: false, action: "Vente échouée", result: "Base de données non connectée", speechText: "Erreur technique" };
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("UPDATE products SET quantity = $1, updated_at = NOW() WHERE id = $2", [newStock, product.id]);
 
-      const saleRef = adminDb.collection("sales").doc();
-      batch.set(saleRef, {
-        productName: productData.name,
-        productId: productDoc.id,
-        quantity: quantity,
-        price: price,
-        amount: totalAmount,
-        clientName: clientName,
-        companyId: uid,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+        const saleId = "sale-" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+        await client.query(
+          `INSERT INTO sales (id, product_name, product_id, quantity, price, amount, client_name, company_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [saleId, product.name, product.id, quantity, price, totalAmount, clientName, uid]
+        );
 
-      await batch.commit();
+        const clientRes = await client.query(
+          "SELECT id, total_spent, orders_count FROM clients WHERE company_id = $1 AND LOWER(name) = LOWER($2)",
+          [uid, clientName]
+        );
+        if (clientRes.rows.length > 0) {
+          const dbClientObj = clientRes.rows[0];
+          await client.query(
+            `UPDATE clients
+             SET total_spent = $1, orders_count = $2, updated_at = NOW()
+             WHERE id = $3`,
+            [dbClientObj.total_spent + totalAmount, dbClientObj.orders_count + 1, dbClientObj.id]
+          );
+        }
+        await client.query("COMMIT");
+      } catch (err: any) {
+        await client.query("ROLLBACK");
+        throw err;
+      } finally {
+        client.release();
+      }
 
       return {
         success: true,
         action: `Vente (${productName})`,
-        result: `${quantity} vendu(s) à ${clientName} pour ${totalAmount}€.`,
-        speechText: `Très bien. J'ai enregistré la vente de ${quantity} ${productName} à ${clientName} pour un montant total de ${totalAmount} euros. Le stock restant est de ${newStock} unités.`,
+        result: `${quantity} vendu(s) à ${clientName} pour ${totalAmount} FCFA.`,
+        speechText: `Très bien. J'ai enregistré la vente de ${quantity} ${productName} à ${clientName} pour un montant total de ${totalAmount} francs CFA. Le stock restant est de ${newStock} unités.`,
       };
     }
 
     // 3. Command: "afficher stock [produit]"
-    // Regex matches: "afficher stock [riz]" or "afficher stock de [riz]"
     const showRegex = /afficher\s+(?:de\s+)?stock\s+(.+)/i;
     const showMatch = text.match(showRegex);
     if (showMatch) {
       const productName = showMatch[1].trim();
 
-      const productsRef = adminDb.collection("products");
-      const query = await productsRef
-        .where("companyId", "==", uid)
-        .where("nameLower", "==", productName.toLowerCase())
-        .limit(1)
-        .get();
+      const prodRes = await query("SELECT quantity FROM products WHERE company_id = $1 AND name_lower = $2", [
+        uid,
+        productName.toLowerCase(),
+      ]);
 
-      if (query.empty) {
+      if (prodRes.rows.length === 0) {
         return {
           success: true,
           action: `Affichage Stock (${productName})`,
@@ -155,8 +149,7 @@ export async function executeVoiceCommand(uid: string, commandText: string): Pro
         };
       }
 
-      const productData = query.docs[0].data();
-      const currentStock = productData.quantity || 0;
+      const currentStock = prodRes.rows[0].quantity || 0;
 
       return {
         success: true,
@@ -167,28 +160,23 @@ export async function executeVoiceCommand(uid: string, commandText: string): Pro
     }
 
     // 4. Command: "générer facture montant [nombre]"
-    // Regex matches: "générer facture montant [150]"
     const invoiceRegex = /g[eé]n[eé]rer\s+facture\s+montant\s+(\d+)/i;
     const invoiceMatch = text.match(invoiceRegex);
     if (invoiceMatch) {
       const amount = parseFloat(invoiceMatch[1]);
       
-      const salesRef = adminDb.collection("sales");
-      await salesRef.add({
-        productName: "Service voix / Facture express",
-        quantity: 1,
-        price: amount,
-        amount: amount,
-        clientName: "Client Express",
-        companyId: uid,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      const saleId = "sale-" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+      await query(
+        `INSERT INTO sales (id, product_name, product_id, quantity, price, amount, client_name, company_id)
+         VALUES ($1, 'Service voix / Facture express', 'express-voice', 1, $2, $2, 'Client Express', $3)`,
+        [saleId, amount, uid]
+      );
 
       return {
         success: true,
         action: "Facturation express",
-        result: `Facture de ${amount}€ générée.`,
-        speechText: `D'accord, j'ai généré une facture rapide d'un montant de ${amount} euros pour le Client Express.`,
+        result: `Facture de ${amount} FCFA générée.`,
+        speechText: `D'accord, j'ai généré une facture rapide d'un montant de ${amount} francs CFA pour le Client Express.`,
       };
     }
 

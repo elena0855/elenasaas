@@ -54,14 +54,14 @@ export default function InvoiceForm({ onCreated }: { onCreated?: () => void }) {
     items.forEach((it) => {
       doc.text(it.description, 20, y);
       doc.text(String(it.qty), 110, y, { align: "right" });
-      doc.text(`${it.price.toFixed(2)} €`, 145, y, { align: "right" });
-      doc.text(`${(it.qty * it.price).toFixed(2)} €`, 185, y, { align: "right" });
+      doc.text(`${it.price.toFixed(0)} FCFA`, 145, y, { align: "right" });
+      doc.text(`${(it.qty * it.price).toFixed(0)} FCFA`, 185, y, { align: "right" });
       y += 7;
     });
     doc.line(20, y, 190, y);
     y += 8;
     doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL : ${total().toFixed(2)} €`, 185, y, { align: "right" });
+    doc.text(`TOTAL : ${total().toFixed(0)} FCFA`, 185, y, { align: "right" });
     doc.save(`facture_${invoiceId}.pdf`);
   };
 
@@ -129,8 +129,7 @@ export default function InvoiceForm({ onCreated }: { onCreated?: () => void }) {
             <input
               type="number"
               min="0"
-              step="0.01"
-              placeholder="Prix (€)"
+              placeholder="Prix (FCFA)"
               value={it.price}
               onChange={(e) => handleItemChange(i, "price", e.target.value)}
               className="rounded-xl bg-slate-800/60 border border-slate-700/50 text-white px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition"
@@ -159,7 +158,7 @@ export default function InvoiceForm({ onCreated }: { onCreated?: () => void }) {
 
       <div className="flex justify-between items-center pt-2 border-t border-slate-800/60">
         <span className="text-cyan-200 font-semibold">
-          Total : {total().toFixed(2)} €
+          Total : {total().toFixed(0)} FCFA
         </span>
         <button
           type="submit"

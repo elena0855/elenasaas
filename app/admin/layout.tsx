@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth-context";
 import Logo from "@/components/Logo";
 import { Button, Badge } from "@/components/ui/index";
 
+import { checkSuperAdmin } from "@/app/actions/admin";
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -18,9 +20,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (!user) {
         router.replace("/login");
       } else {
-        // Query custom claims client-side
-        user.getIdTokenResult().then((tokenResult) => {
-          const isSuperAdmin = tokenResult.claims.role === "super_admin";
+        checkSuperAdmin(user.uid, user.email || "").then((isSuperAdmin) => {
           setIsAdmin(isSuperAdmin);
           if (!isSuperAdmin) {
             console.warn("Access denied. User is not a super_admin.");

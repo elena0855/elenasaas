@@ -57,13 +57,13 @@ export const generateInvoicePDF = (invoice: Invoice) => {
   y += 7;
   invoice.items.forEach((it) => {
     doc.text(it.description, 20, y);
-    doc.text((it.qty * it.price).toFixed(2) + " €", 185, y, { align: "right" });
+    doc.text((it.qty * it.price).toFixed(0) + " FCFA", 185, y, { align: "right" });
     y += 7;
   });
   doc.line(20, y, 190, y);
   y += 8;
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL : " + invoice.total.toFixed(2) + " €", 185, y, { align: "right" });
+  doc.text("TOTAL : " + invoice.total.toFixed(0) + " FCFA", 185, y, { align: "right" });
   doc.save("facture_" + invoice.id + ".pdf");
 };
 

@@ -1,20 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Plus, Edit2, Trash2, Search, PackageMinus, AlertCircle } from "lucide-react";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
+import { getProducts, addProduct, updateProduct, deleteProduct } from "@/app/actions/products";
 import {
   Button,
   Card,
@@ -59,10 +48,14 @@ export default function ProductsPage() {
   const [price, setPrice] = useState("0");
   const [quantity, setQuantity] = useState("0");
 
-  useEffect(() => {
+  const fetchProducts = useCallback(async () => {
     if (!user) return;
-
-    if (!db) {
+    try {
+      setLoading(true);
+      const data = await getProducts(user.uid);
+      setProducts(data);
+    } catch (error) {
+      console.warn("Prisma fetch failed, using local storage fallback:", error);
       const stored = localStorage.getItem(`products_${user.uid}`);
       if (stored) {
         setProducts(JSON.parse(stored));
@@ -75,35 +68,14 @@ export default function ProductsPage() {
         localStorage.setItem(`products_${user.uid}`, JSON.stringify(defaultProducts));
         setProducts(defaultProducts);
       }
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Real-time listener filtering by company ID
-    const productsRef = collection(db, "products");
-    const q = query(productsRef, where("companyId", "==", user.uid));
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const items = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Product[];
-        
-        // Sort alphabetically
-        items.sort((a, b) => a.name.localeCompare(b.name));
-        setProducts(items);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Firestore listener error:", error);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
   }, [user]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Open Edit Dialog
   const openEdit = (product: Product) => {
@@ -128,34 +100,38 @@ export default function ProductsPage() {
     e.preventDefault();
     if (!user) return;
 
-    const newProduct = {
-      id: "prod-" + Math.random().toString(36).substring(2, 9),
-      name: name.trim(),
-      nameLower: name.trim().toLowerCase(),
-      price: parseFloat(price) || 0.0,
-      quantity: parseInt(quantity, 10) || 0,
-      companyId: user.uid,
-    };
+    const nameVal = name.trim();
+    const priceVal = parseFloat(price) || 0.0;
+    const qtyVal = parseInt(quantity, 10) || 0;
 
-    if (!db) {
+    try {
+      const res = await addProduct({
+        name: nameVal,
+        price: priceVal,
+        quantity: qtyVal,
+        companyId: user.uid,
+      });
+      if (res.success) {
+        fetchProducts();
+        setIsAddOpen(false);
+      } else {
+        throw new Error(res.error || "Ajout échoué");
+      }
+    } catch (error) {
+      console.warn("Adding product server action failed, falling back to local storage:", error);
+      const newProduct = {
+        id: "prod-" + Math.random().toString(36).substring(2, 9),
+        name: nameVal,
+        nameLower: nameVal.toLowerCase(),
+        price: priceVal,
+        quantity: qtyVal,
+        companyId: user.uid,
+      };
       const updated = [...products, newProduct];
       updated.sort((a, b) => a.name.localeCompare(b.name));
       localStorage.setItem(`products_${user.uid}`, JSON.stringify(updated));
       setProducts(updated);
       setIsAddOpen(false);
-      return;
-    }
-
-    try {
-      const productsRef = collection(db, "products");
-      await addDoc(productsRef, {
-        ...newProduct,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      setIsAddOpen(false);
-    } catch (error) {
-      console.error("Error adding product:", error);
     }
   };
 
@@ -164,38 +140,38 @@ export default function ProductsPage() {
     e.preventDefault();
     if (!selectedProduct) return;
 
-    const updatedProduct = {
-      ...selectedProduct,
-      name: name.trim(),
-      nameLower: name.trim().toLowerCase(),
-      price: parseFloat(price) || 0.0,
-      quantity: parseInt(quantity, 10) || 0,
-    };
+    const nameVal = name.trim();
+    const priceVal = parseFloat(price) || 0.0;
+    const qtyVal = parseInt(quantity, 10) || 0;
 
-    if (!db) {
-      if (!user) return;
+    try {
+      const res = await updateProduct(selectedProduct.id, {
+        name: nameVal,
+        price: priceVal,
+        quantity: qtyVal,
+      });
+      if (res.success) {
+        fetchProducts();
+        setIsEditOpen(false);
+        setSelectedProduct(null);
+      } else {
+        throw new Error(res.error || "Mise à jour échouée");
+      }
+    } catch (error) {
+      console.warn("Updating product server action failed, falling back to local storage:", error);
+      const updatedProduct = {
+        ...selectedProduct,
+        name: nameVal,
+        nameLower: nameVal.toLowerCase(),
+        price: priceVal,
+        quantity: qtyVal,
+      };
       const updated = products.map((p) => p.id === selectedProduct.id ? updatedProduct : p);
       updated.sort((a, b) => a.name.localeCompare(b.name));
       localStorage.setItem(`products_${user.uid}`, JSON.stringify(updated));
       setProducts(updated);
       setIsEditOpen(false);
       setSelectedProduct(null);
-      return;
-    }
-
-    try {
-      const productRef = doc(db, "products", selectedProduct.id);
-      await updateDoc(productRef, {
-        name: name.trim(),
-        nameLower: name.trim().toLowerCase(),
-        price: parseFloat(price) || 0.0,
-        quantity: parseInt(quantity, 10) || 0,
-        updatedAt: serverTimestamp(),
-      });
-      setIsEditOpen(false);
-      setSelectedProduct(null);
-    } catch (error) {
-      console.error("Error updating product:", error);
     }
   };
 
@@ -203,19 +179,18 @@ export default function ProductsPage() {
   const handleDeleteProduct = async (productId: string) => {
     if (!confirm("Voulez-vous vraiment supprimer ce produit du catalogue ?")) return;
 
-    if (!db) {
-      if (!user) return;
+    try {
+      const res = await deleteProduct(productId);
+      if (res.success) {
+        fetchProducts();
+      } else {
+        throw new Error(res.error || "Suppression échouée");
+      }
+    } catch (error) {
+      console.warn("Deleting product server action failed, falling back to local storage:", error);
       const updated = products.filter((p) => p.id !== productId);
       localStorage.setItem(`products_${user.uid}`, JSON.stringify(updated));
       setProducts(updated);
-      return;
-    }
-
-    try {
-      const productRef = doc(db, "products", productId);
-      await deleteDoc(productRef);
-    } catch (error) {
-      console.error("Error deleting product:", error);
     }
   };
 
@@ -291,7 +266,7 @@ export default function ProductsPage() {
                         {p.name}
                       </TableCell>
                       <TableCell className="font-mono text-cyan-400">
-                        {p.price.toFixed(2)} €
+                        {p.price.toFixed(0)} FCFA
                       </TableCell>
                       <TableCell className="font-mono text-slate-300">
                         {p.quantity}
@@ -359,13 +334,12 @@ export default function ProductsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Prix unitaire (€)
+                Prix unitaire (FCFA)
               </label>
               <Input
                 type="number"
-                step="0.01"
                 min="0"
-                placeholder="0.00"
+                placeholder="0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 required
@@ -425,13 +399,12 @@ export default function ProductsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Prix unitaire (€)
+                Prix unitaire (FCFA)
               </label>
               <Input
                 type="number"
-                step="0.01"
                 min="0"
-                placeholder="0.00"
+                placeholder="0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 required

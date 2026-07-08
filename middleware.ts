@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const uid = payload.sub; // Firebase user UID
-  const role = payload.role || ""; // Custom claims role
+  let role = payload.role || ""; // Custom claims role
 
   // If on login, redirect authenticated users
   if (pathname === "/login") {
@@ -77,16 +77,15 @@ export async function middleware(request: NextRequest) {
       let status = "trial";
       let trialStartTimeStr = null;
 
-      // Real Firebase REST query
-      const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "elena-saas";
-      const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/companies/${uid}`;
-      const res = await fetch(firestoreUrl);
+            // Fetch from internal check-subscription API
+      const subscriptionUrl = new URL(`/api/check-subscription?uid=${uid}`, request.url).toString();
+      const res = await fetch(subscriptionUrl);
 
       if (res.status === 200) {
-        const doc = await res.json();
-        const fields = doc.fields || {};
-        status = fields.status?.stringValue || "trial";
-        trialStartTimeStr = fields.trialStart?.timestampValue;
+        const data = await res.json();
+        status = data.status || "trial";
+        trialStartTimeStr = data.trialStart;
+        role = data.role || "user";
       }
       
       let trialExpiredAndGracePassed = false;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "@/lib/auth-context";
+import PWARegistration from "@/components/PWARegistration";
 import "./globals.css";
 
 const inter = Inter({
@@ -19,6 +20,7 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "ELENA — SaaS B2B Point de Vente & Assistant Vocal",
   description: "Solution SaaS de point de vente, contrôle d'inventaire et comptabilité par assistant vocal intelligent.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -33,6 +35,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           {children}
+          <PWARegistration />
           <Toaster
             position="top-right"
             toastOptions={{

@@ -10,6 +10,7 @@ import {
   isClientConfigured,
 } from "@/lib/firebase";
 import { setSessionCookie } from "@/app/actions/auth";
+import { checkSuperAdmin } from "@/app/actions/admin";
 import { useAuth } from "@/lib/auth-context";
 import Logo from "@/components/Logo";
 import {
@@ -47,13 +48,15 @@ export default function LoginPage() {
 
   const doRedirect = async () => {
     try {
-      const tokenResult = await auth?.currentUser?.getIdTokenResult();
-      const role = tokenResult?.claims?.role;
-      if (role === "super_admin") {
-        router.replace("/admin/companies");
-      } else {
-        router.replace("/app/dashboard");
+      const currentUser = auth?.currentUser;
+      if (currentUser) {
+        const isSuperAdmin = await checkSuperAdmin(currentUser.uid, currentUser.email || "");
+        if (isSuperAdmin) {
+          router.replace("/admin/companies");
+          return;
+        }
       }
+      router.replace("/app/dashboard");
     } catch {
       router.replace("/app/dashboard");
     }
@@ -104,10 +107,9 @@ export default function LoginPage() {
       await setSessionCookie(token);
 
       // Now navigate — cookie is guaranteed to exist
-      const tokenResult = await result.user.getIdTokenResult();
-      const role = tokenResult?.claims?.role;
+      const isSuperAdmin = await checkSuperAdmin(result.user.uid, result.user.email || "");
 
-      if (role === "super_admin") {
+      if (isSuperAdmin) {
         window.location.href = "/admin/companies";
       } else {
         window.location.href = "/app/dashboard";

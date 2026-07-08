@@ -129,10 +129,10 @@ export default function ReportsPage() {
     doc.text("Indicateurs clés", 20, y);
     y += 8;
     doc.setFont("helvetica", "normal");
-    doc.text(`CA total : ${totalCA.toFixed(2)} €`, 20, y); y += 7;
+    doc.text(`CA total : ${totalCA.toFixed(0)} FCFA`, 20, y); y += 7;
     doc.text(`Transactions : ${totalTransactions}`, 20, y); y += 7;
-    doc.text(`Panier moyen : ${avgBasket.toFixed(2)} €`, 20, y); y += 7;
-    doc.text(`Valeur stock : ${stockValue.toFixed(2)} €`, 20, y);
+    doc.text(`Panier moyen : ${avgBasket.toFixed(0)} FCFA`, 20, y); y += 7;
+    doc.text(`Valeur stock : ${stockValue.toFixed(0)} FCFA`, 20, y);
     doc.save(`rapport-elena-${period}.pdf`);
     toast.success("Rapport PDF téléchargé !");
   };
@@ -148,7 +148,7 @@ export default function ReportsPage() {
       return (
         <div className="bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-2 shadow-xl text-xs">
           <p className="text-slate-400 mb-1">{label}</p>
-          <p className="text-cyan-400 font-bold">{payload[0].value.toFixed(2)} €</p>
+          <p className="text-cyan-400 font-bold">{payload[0].value.toFixed(0)} FCFA</p>
         </div>
       );
     }
@@ -201,10 +201,10 @@ export default function ReportsPage() {
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Chiffre d'affaires", value: `${totalCA.toFixed(2)} €`, icon: DollarSign, color: "emerald", sub: `${totalTransactions} transactions` },
-          { label: "Panier moyen", value: `${avgBasket.toFixed(2)} €`, icon: ShoppingCart, color: "cyan", sub: "Par transaction" },
+          { label: "Chiffre d'affaires", value: `${totalCA.toFixed(0)} FCFA`, icon: DollarSign, color: "emerald", sub: `${totalTransactions} transactions` },
+          { label: "Panier moyen", value: `${avgBasket.toFixed(0)} FCFA`, icon: ShoppingCart, color: "cyan", sub: "Par transaction" },
           { label: "Transactions", value: totalTransactions, icon: BarChart3, color: "purple", sub: PERIOD_LABELS[period] },
-          { label: "Valeur stock", value: `${stockValue.toFixed(0)} €`, icon: Package, color: "amber", sub: `${products.length} produits` },
+          { label: "Valeur stock", value: `${stockValue.toFixed(0)} FCFA`, icon: Package, color: "amber", sub: `${products.length} produits` },
         ].map((kpi, i) => {
           const Icon = kpi.icon;
           const colorMap: Record<string, { icon: string; bg: string }> = {
@@ -303,7 +303,7 @@ export default function ReportsPage() {
                     <XAxis type="number" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} axisLine={false} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} width={80} />
                     <Tooltip
-                      formatter={(v: any) => [`${Number(v).toFixed(2)} €`, "CA"]}
+                      formatter={(v: any) => [`${Number(v).toFixed(0)} FCFA`, "CA"]}
                       contentStyle={{ background: "#0f172a", border: "1px solid rgba(51,65,85,0.6)", borderRadius: 12, fontSize: 11 }}
                     />
                     <Bar dataKey="revenue" fill="url(#barGrad)" radius={[0, 6, 6, 0]} />

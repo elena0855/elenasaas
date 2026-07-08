@@ -25,14 +25,14 @@ const CustomTooltip = ({ active, payload, currency }: any) => {
   if (active && payload && payload.length) {
     const formatted = (() => {
       try {
-        return new Intl.NumberFormat(undefined, {
+        return new Intl.NumberFormat("fr-BJ", {
           style: "currency",
-          currency: currency || "EUR",
+          currency: "XOF",
           minimumFractionDigits: 0,
-          maximumFractionDigits: 2,
+          maximumFractionDigits: 0,
         }).format(payload[0].value);
       } catch {
-        return `${payload[0].value.toFixed(2)} ${currency || "EUR"}`;
+        return `${payload[0].value.toFixed(0)} FCFA`;
       }
     })();
     return (
@@ -45,7 +45,7 @@ const CustomTooltip = ({ active, payload, currency }: any) => {
   return null;
 };
 
-export default function DashboardCharts({ data, currency = "EUR" }: DashboardChartsProps) {
+export default function DashboardCharts({ data, currency = "XOF" }: DashboardChartsProps) {
   const hasData = data.some((d) => d.amount > 0);
 
   return (
@@ -94,7 +94,7 @@ export default function DashboardCharts({ data, currency = "EUR" }: DashboardCha
             fontSize={11}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(v) => `${v}€`}
+            tickFormatter={(v) => `${v} F`}
             dx={-5}
             tick={{ fill: "#64748b" }}
           />

@@ -2,7 +2,7 @@ import React from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { BarChart3, Package, DollarSign, ArrowUpRight } from "lucide-react";
-import { adminDb } from "@/lib/firebase-admin";
+import { query } from "@/lib/pg";
 import DashboardCharts from "./DashboardCharts";
 import {
   Card,
@@ -38,28 +38,19 @@ const LOCALE_TO_CURRENCY: Record<string, string> = {
 };
 
 function detectCurrency(acceptLanguage: string | null): string {
-  if (!acceptLanguage) return "EUR";
-  // Accept-Language: fr-FR,fr;q=0.9,en;q=0.8
-  const primary = acceptLanguage.split(",")[0].split(";")[0].trim();
-  if (LOCALE_TO_CURRENCY[primary]) return LOCALE_TO_CURRENCY[primary];
-  // Try language only (e.g. "fr" → try "fr-FR")
-  const lang = primary.split("-")[0];
-  const match = Object.entries(LOCALE_TO_CURRENCY).find(([k]) =>
-    k.startsWith(lang + "-")
-  );
-  return match ? match[1] : "EUR";
+  return "XOF";
 }
 
 function formatCurrency(amount: number, currency: string): string {
   try {
-    return new Intl.NumberFormat(undefined, {
+    return new Intl.NumberFormat("fr-BJ", {
       style: "currency",
-      currency,
+      currency: "XOF",
       minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
+      maximumFractionDigits: 0,
     }).format(amount);
   } catch {
-    return `${amount.toFixed(2)} ${currency}`;
+    return `${amount.toFixed(0)} FCFA`;
   }
 }
 
@@ -94,37 +85,35 @@ async function getDashboardData() {
     sales: [] as any[],
   };
 
-  // Check if Admin SDK has real credentials (avoid noisy gRPC errors)
-  const hasAdminCreds =
-    !!process.env.FIREBASE_PRIVATE_KEY &&
-    process.env.FIREBASE_PRIVATE_KEY.includes("-----BEGIN PRIVATE KEY-----") &&
-    !process.env.FIREBASE_PRIVATE_KEY.includes("YOUR_PRIVATE_KEY_HERE") &&
-    !!process.env.FIREBASE_CLIENT_EMAIL &&
-    !process.env.FIREBASE_CLIENT_EMAIL.includes("xxxxx") &&
-    !!process.env.FIREBASE_PROJECT_ID &&
-    process.env.FIREBASE_PROJECT_ID !== "YOUR_PROJECT_ID";
-
-  if (!hasAdminCreds) {
-    // No real Firebase creds — return zeros silently
-    return emptyResult;
-  }
-
   try {
-    const [companySnap, productsSnap, salesSnap] = await Promise.all([
-      adminDb.collection("companies").doc(uid).get(),
-      adminDb.collection("products").where("companyId", "==", uid).get(),
-      adminDb.collection("sales").where("companyId", "==", uid).get(),
+    const [companyRes, productsRes, salesRes] = await Promise.all([
+      query(
+        `SELECT id, name, admin_email as "adminEmail", admin_uid as "adminUid", status, 
+                trial_start as "trialStart", subscription_end as "subscriptionEnd", created_at as "createdAt" 
+         FROM companies WHERE id = $1`,
+        [uid]
+      ),
+      query(
+        `SELECT id, name, price, quantity, company_id as "companyId" 
+         FROM products WHERE company_id = $1`,
+        [uid]
+      ),
+      query(
+        `SELECT id, product_name as "productName", product_id as "productId", quantity, price, amount, 
+                client_name as "clientName", company_id as "companyId", created_at as "createdAt" 
+         FROM sales WHERE company_id = $1`,
+        [uid]
+      ),
     ]);
 
-    const company = companySnap.exists ? companySnap.data() : null;
-    const products = productsSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
-    const sales = salesSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
+    const company = companyRes.rows.length > 0 ? companyRes.rows[0] : null;
+    const products = productsRes.rows;
+    const sales = salesRes.rows;
 
     return { company, products, sales };
   } catch (error: any) {
-    // Log once, don't rethrow — return zeros
     console.warn(
-      `[Dashboard] Firestore unavailable (${error?.code ?? error?.message}). Showing zeros.`
+      `[Dashboard] Database unavailable (${error?.message}). Showing zeros.`
     );
     return emptyResult;
   }
@@ -173,9 +162,7 @@ export default async function DashboardPage() {
     return { date: dateStr, amount };
   });
 
-  const isDemo =
-    !process.env.FIREBASE_PROJECT_ID ||
-    process.env.FIREBASE_PROJECT_ID === "YOUR_PROJECT_ID";
+  const isDemo = !process.env.DATABASE_URL;
 
   return (
     <div className="space-y-8 animate-fade-up">
@@ -184,9 +171,9 @@ export default async function DashboardPage() {
         <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-800/40 text-cyan-400 text-xs flex items-start gap-3">
           <span className="text-lg leading-none">⚙️</span>
           <span>
-            <strong>Mode hors-ligne</strong> — Configurez vos clés Firebase dans{" "}
-            <code className="bg-slate-900 px-1 py-0.5 rounded">.env.local</code>{" "}
-            pour activer la base de données en temps réel.
+            <strong>Mode hors-ligne</strong> — Configurez votre variable{" "}
+            <code className="bg-slate-900 px-1 py-0.5 rounded">DATABASE_URL</code>{" "}
+            dans `.env.local` pour connecter PostgreSQL.
           </span>
         </div>
       )}

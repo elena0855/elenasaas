@@ -6,12 +6,8 @@ import {
   Users, Plus, Search, Phone, Mail, Trash2, Edit3, X,
   TrendingUp, ShoppingBag, CheckCircle,
 } from "lucide-react";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
-import {
-  collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, orderBy, serverTimestamp,
-} from "firebase/firestore";
+import { getClients, addClient, updateClient, deleteClient } from "@/app/actions/clients";
 import toast from "react-hot-toast";
 
 interface Client {
@@ -40,21 +36,28 @@ export default function ClientsPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user || !db) return;
-    const q = query(
-      collection(db, "clients"),
-      where("companyId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setClients(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() } as Client))
-      );
+  const fetchClients = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const data = await getClients(user.uid);
+      setClients(data as any);
+    } catch (error) {
+      console.warn("Prisma fetch failed, using local storage fallback:", error);
+      const stored = localStorage.getItem(`clients_${user.uid}`);
+      if (stored) {
+        setClients(JSON.parse(stored));
+      } else {
+        setClients([]);
+      }
+    } finally {
       setLoading(false);
-    });
-    return () => unsub();
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
 
   const openCreate = () => {
     setEditing(null);
@@ -72,47 +75,60 @@ export default function ClientsPage() {
 
   const handleSave = async () => {
     if (!form.name.trim()) return toast.error("Nom requis");
-    if (!user || !db) return;
+    if (!user) return;
     setSaving(true);
     try {
       if (editing) {
-        await updateDoc(doc(db, "clients", editing.id), {
+        const res = await updateClient(editing.id, {
           name: form.name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
           address: form.address?.trim() || "",
         });
-        toast.success("Client mis à jour");
+        if (res.success) {
+          toast.success("Client mis à jour");
+          fetchClients();
+          closeForm();
+        } else {
+          throw new Error(res.error);
+        }
       } else {
-        await addDoc(collection(db, "clients"), {
+        const res = await addClient({
           companyId: user.uid,
           name: form.name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
           address: form.address?.trim() || "",
-          totalSpent: 0,
-          ordersCount: 0,
-          createdAt: serverTimestamp(),
         });
-        toast.success("Client ajouté !");
+        if (res.success) {
+          toast.success("Client ajouté !");
+          fetchClients();
+          closeForm();
+        } else {
+          throw new Error(res.error);
+        }
       }
-      closeForm();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(e.message || "Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!db) return;
+    if (!confirm("Voulez-vous vraiment supprimer ce client ?")) return;
     setDeleting(id);
     try {
-      await deleteDoc(doc(db, "clients", id));
-      toast.success("Client supprimé");
-    } catch {
-      toast.error("Erreur suppression");
+      const res = await deleteClient(id);
+      if (res.success) {
+        toast.success("Client supprimé");
+        fetchClients();
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Erreur suppression");
     } finally {
       setDeleting(null);
     }
@@ -153,7 +169,7 @@ export default function ClientsPage() {
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: "Total clients", value: clients.length, icon: Users, color: "blue" },
-          { label: "CA total clients", value: `${totalCA.toFixed(0)} €`, icon: TrendingUp, color: "emerald" },
+          { label: "CA total clients", value: `${totalCA.toFixed(0)} FCFA`, icon: TrendingUp, color: "emerald" },
           { label: "Total commandes", value: clients.reduce((s, c) => s + c.ordersCount, 0), icon: ShoppingBag, color: "purple" },
         ].map((s, i) => (
           <motion.div
@@ -233,7 +249,7 @@ export default function ClientsPage() {
                   </div>
 
                   {/* CA */}
-                  <p className="font-mono font-bold text-emerald-400 text-sm">{c.totalSpent.toFixed(2)} €</p>
+                  <p className="font-mono font-bold text-emerald-400 text-sm">{c.totalSpent.toFixed(0)} FCFA</p>
 
                   {/* Orders */}
                   <div className="flex items-center gap-1.5 text-sm text-slate-300">

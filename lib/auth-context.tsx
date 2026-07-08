@@ -73,19 +73,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
-          // Set user immediately so UI can react
+          const token = await firebaseUser.getIdToken();
+          
+          // Set client-side cookie synchronously before setting state
+          const maxAge = 60 * 60 * 24 * 7;
+          document.cookie = `token=${token}; path=/; max-age=${maxAge}; SameSite=Lax; ${
+            window.location.protocol === "https:" ? "Secure" : ""
+          }`;
+
           setUser(firebaseUser);
-          // Refresh token and sync cookie in background — login page
-          // handles cookie setting explicitly before navigating, so this
-          // is just a background sync for token refresh cases
-          firebaseUser.getIdToken().then((token) => {
-            setSessionCookie(token).catch((e) =>
-              console.warn("Background cookie sync failed:", e)
-            );
-          });
+
+          // Background sync Server Action
+          setSessionCookie(token).catch((e) =>
+            console.warn("Background cookie sync failed:", e)
+          );
         } else {
           setUser(null);
           setCompany(null);
+          document.cookie = "token=; path=/; max-age=0; SameSite=Lax";
           setSessionCookie(null).catch(() => {});
         }
       } catch (err) {

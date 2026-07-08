@@ -1,0 +1,100 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Company {
+  id              String          @id // Maps to the Firebase Auth User UID
+  name            String
+  adminEmail      String
+  adminUid        String
+  status          String          @default("trial") // "trial" | "active" | "suspended"
+  trialStart      DateTime        @default(now())
+  subscriptionEnd DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  products        Product[]
+  sales           Sale[]
+  clients         Client[]
+  suppliers       Supplier[]
+  activationKeys  ActivationKey[]
+}
+
+model Product {
+  id        String   @id @default(uuid())
+  name      String
+  nameLower String
+  price     Float
+  quantity  Int
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([nameLower])
+}
+
+model Sale {
+  id          String   @id @default(uuid())
+  productName String
+  productId   String
+  quantity    Int
+  price       Float
+  amount      Float
+  clientName  String
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([companyId])
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  address     String?
+  totalSpent  Float    @default(0.0)
+  ordersCount Int      @default(0)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model Supplier {
+  id            String   @id @default(uuid())
+  name          String
+  email         String?
+  phone         String?
+  website       String?
+  category      String?
+  productsCount Int      @default(0)
+  rating        Int      @default(5)
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model ActivationKey {
+  key       String    @id // Format: ELN-XXXX-XXXX
+  companyId String?
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  status    String    @default("unused") // "unused" | "used"
+  usedBy    String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+}

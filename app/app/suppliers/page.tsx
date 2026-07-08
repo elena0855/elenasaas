@@ -1,17 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Truck, Plus, Search, Phone, Mail, Trash2, Edit3, X,
   Globe, Package, Star,
 } from "lucide-react";
-import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
-import {
-  collection, addDoc, updateDoc, deleteDoc,
-  doc, onSnapshot, query, where, orderBy, serverTimestamp,
-} from "firebase/firestore";
+import { getSuppliers, addSupplier, updateSupplier, deleteSupplier } from "@/app/actions/suppliers";
 import toast from "react-hot-toast";
 
 interface Supplier {
@@ -41,19 +37,28 @@ export default function SuppliersPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user || !db) return;
-    const q = query(
-      collection(db, "suppliers"),
-      where("companyId", "==", user.uid),
-      orderBy("createdAt", "desc")
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      setSuppliers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Supplier)));
+  const fetchSuppliers = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const data = await getSuppliers(user.uid);
+      setSuppliers(data as any);
+    } catch (error) {
+      console.warn("Prisma fetch failed, using local storage fallback:", error);
+      const stored = localStorage.getItem(`suppliers_${user.uid}`);
+      if (stored) {
+        setSuppliers(JSON.parse(stored));
+      } else {
+        setSuppliers([]);
+      }
+    } finally {
       setLoading(false);
-    });
-    return () => unsub();
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchSuppliers();
+  }, [fetchSuppliers]);
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setShowForm(true); };
   const openEdit = (s: Supplier) => {
@@ -65,49 +70,62 @@ export default function SuppliersPage() {
 
   const handleSave = async () => {
     if (!form.name.trim()) return toast.error("Nom requis");
-    if (!user || !db) return;
+    if (!user) return;
     setSaving(true);
     try {
       if (editing) {
-        await updateDoc(doc(db, "suppliers", editing.id), {
+        const res = await updateSupplier(editing.id, {
           name: form.name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
           website: form.website?.trim() || "",
           category: form.category || "",
         });
-        toast.success("Fournisseur mis à jour");
+        if (res.success) {
+          toast.success("Fournisseur mis à jour");
+          fetchSuppliers();
+          closeForm();
+        } else {
+          throw new Error(res.error);
+        }
       } else {
-        await addDoc(collection(db, "suppliers"), {
+        const res = await addSupplier({
           companyId: user.uid,
           name: form.name.trim(),
           email: form.email.trim(),
           phone: form.phone.trim(),
           website: form.website?.trim() || "",
           category: form.category || "Autre",
-          productsCount: 0,
-          rating: 5,
-          createdAt: serverTimestamp(),
         });
-        toast.success("Fournisseur ajouté !");
+        if (res.success) {
+          toast.success("Fournisseur ajouté !");
+          fetchSuppliers();
+          closeForm();
+        } else {
+          throw new Error(res.error);
+        }
       }
-      closeForm();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error("Erreur lors de la sauvegarde");
+      toast.error(e.message || "Erreur lors de la sauvegarde");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!db) return;
+    if (!confirm("Voulez-vous vraiment supprimer ce fournisseur ?")) return;
     setDeleting(id);
     try {
-      await deleteDoc(doc(db, "suppliers", id));
-      toast.success("Fournisseur supprimé");
-    } catch {
-      toast.error("Erreur suppression");
+      const res = await deleteSupplier(id);
+      if (res.success) {
+        toast.success("Fournisseur supprimé");
+        fetchSuppliers();
+      } else {
+        throw new Error(res.error);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Erreur suppression");
     } finally {
       setDeleting(null);
     }

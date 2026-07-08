@@ -85,7 +85,7 @@ export default function InvoicesPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="font-bold text-cyan-300 font-mono">
-                      {inv.total.toFixed(2)} €
+                      {inv.total.toFixed(0)} FCFA
                     </span>
                     <button
                       onClick={() => generateInvoicePDF(inv)}
